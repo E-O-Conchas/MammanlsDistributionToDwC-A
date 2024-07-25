@@ -1,0 +1,259 @@
+#######################################
+# Author: Emmanuel Oceguera
+# Date: July 2024
+#  
+# Work: This script processes mammal species distribution data across various European countries,
+# transforming the data into Darwin Core standards. The objective is to aggregate, clean,
+# and reformat the data for further analysis and publication, ensuring that each country's
+# data is standardized and combined into a single, cohesive dataset. It includes setting up
+# the environment, importing data and libraries, processing shapefiles to add event IDs, and 
+# ensuring data integrity and compatibility.
+#######################################
+
+# Clean the environment
+rm(list = ls())
+gc()
+
+# Set the working directory
+setwd("I://biocon//Emmanuel_Oceguera//projects//Mammals_species_distribution_DarwingCore//output")
+getwd()
+
+# Import necessary libraries
+library(tidyverse)
+library(sf)
+library(stringr)
+
+# Load reference data sets
+event_id <- read.csv("I:/biocon/Emmanuel_Oceguera/projects/Mammals_species_distribution_DarwingCore/data/in_process/europe/10072024/02mammals_dwc_event.csv", sep = ",", header = TRUE)
+View(event_id)
+
+
+
+# Replace "na" and blank values with NA in character columns
+event_id <- event_id %>%
+  mutate_if(is.character, ~na_if(., "na")) %>%
+  mutate_all(is.character, ~na_if(., ""))
+
+View(event_id)
+write.csv(event_id, "I:/biocon/Emmanuel_Oceguera/projects/Mammals_species_distribution_DarwingCore/data/in_process/europe/10072024/mammals_dwc_event.csv",
+          col.names = T, row.names = F, sep = ",")
+
+
+unique(!is.na(event_id$yearIni))
+
+
+# Define the directory containing all European shapefiles
+dir_europe <- "I:/biocon/Emmanuel_Oceguera/projects/Mammals_species_distribution_DarwingCore/output"
+country_dirs <- list.dirs(dir_europe, recursive = FALSE, full.names = TRUE)
+
+# Create a list to store shapefiles by country
+shapefiles_by_country <- list()
+
+# Loop through each country directory and store the shapefiles
+for (country_dir in country_dirs) {
+  country_name <- basename(country_dir)
+  shp_files <- list.files(country_dir, pattern = "\\.shp$", full.names = TRUE)
+  shapefiles_by_country[[country_name]] <- shp_files
+}
+
+# Initialize issues_log
+issues_log <- list()
+
+process_shapefile <- function(dataset_path) {
+  # Read the shapefile
+  shp_data <- st_read(dataset_path, quiet = TRUE)
+  
+  # Dynamically determine the species code column name based on the file name
+  species_code <- tolower(str_extract(basename(dataset_path), "(?<=_)[^_]+(?=\\.shp$)"))
+  
+  if (is.na(species_code)) {
+    issues_log[[dataset_path]] <- "Species code could not be determined"
+    return(NULL)
+  }
+  
+  cat("Species code:", species_code, " ", "\n")
+  
+  column_name <- paste0("m_", species_code)
+  
+  # Check if the species column exists in the shapefile
+  if (!column_name %in% colnames(shp_data)) {
+    issues_log[[dataset_path]] <- paste("Column does not exist in the shapefile:", column_name)
+    return(NULL)
+  }
+  
+  # Select the required columns: the first three columns, the species-specific column, and 'eventID'
+  shp_data_selected <- shp_data %>%
+    select(1:3, all_of(column_name), "eventID")
+  
+  # Rename the species-specific column to include the species code for clarity
+  colnames(shp_data_selected)[4] <- species_code
+  
+  return(shp_data_selected)
+}
+
+# Process all shapefiles and combine the results by country
+mammals_data_by_country <- list()
+
+for (country in names(shapefiles_by_country)) {
+  shp_files <- shapefiles_by_country[[country]]
+  combined_data_list <- lapply(shp_files, process_shapefile)
+  combined_data <- bind_rows(combined_data_list[!sapply(combined_data_list, is.null)])
+  mammals_data_by_country[[country]] <- combined_data
+}
+
+# Reorder columns for all countries
+mammals_data_by_country_reorder <- list()
+
+for (country in names(mammals_data_by_country)) {
+  shp_files <- mammals_data_by_country[[country]] %>% 
+    select(-c(eventID, geometry), everything(), eventID, geometry)
+  shp_files[is.na(shp_files)] <- 0
+  mammals_data_by_country_reorder[[country]] <- shp_files
+}
+
+# Check
+# mammals_data_by_country_reorder[5]
+
+
+# The goal of this code block is to aggregate mammal species distribution data by country, 
+# summarizing it in a way that combines multiple occurrences of the same species within 
+# the same spatial cell (cellcode). Specifically, it ensures that for each species, 
+# only the highest presence value within each cell is kept (1 indicating presence, 9 indicating sporadic presence).
+
+# Define all the species code, then create species patter
+species_codes <- c("capcap", "ruprup", "susscr", "capibe", "cerela", "alcalc", "capaeg", 
+                   "bisbon", "cappyr", "ruppyr", "rantar", "ruporn", "canlup", "ursarc", 
+                   "lynlyn", "gulgul", "lynpar")
+
+species_patter <- paste(species_codes, collapse = "|")
+
+# Aggregate data by country
+eu_mammals_occ_data_grouped <- list()
+
+for (country in names(mammals_data_by_country_reorder)) {
+  shp_files <- mammals_data_by_country_reorder[[country]]
+  species_columns <- colnames(shp_files)[grepl(species_patter, colnames(shp_files))]
+  
+  # Summarize the data
+  shp_files_grouped <- shp_files %>%
+    group_by(cellcode, eventID) %>%
+    summarise(across(all_of(species_columns), max, na.rm = TRUE), .groups = 'drop')
+  
+  eu_mammals_occ_data_grouped[[country]] <- shp_files_grouped
+}
+
+
+# Write the output files to the respective country folder within a subfolder called "spp"
+for (country in names(eu_mammals_occ_data_grouped)) {
+  output_dir <- file.path(dir_europe, country, "spp")
+  
+  # Create the subfolder if it does not exist
+  if (!dir.exists(output_dir)) {
+    dir.create(output_dir, recursive = TRUE)
+  }
+  
+  # Define the output file path
+  output_path <- file.path(output_dir, paste0(country, "_mammals_spp_grid.shp"))
+  
+  # Write the sf file
+  st_write(eu_mammals_occ_data_grouped[[country]], output_path, delete_layer = TRUE, quiet = TRUE)
+  
+  cat("Shapefiles written to:", output_dir, "\n")
+}
+
+# Transform dataset to a long format without absence (not 0)
+eu_mammals_occ_data_long <- list()
+
+for (country in names(eu_mammals_occ_data_grouped)) {
+  shp_files <- eu_mammals_occ_data_grouped[[country]]
+  
+  # Transform the dataset to long format
+  mammals_occ_df_long <- as.data.frame(shp_files) %>%
+    pivot_longer(cols = where(is.numeric), names_to = 'taxonID', values_to = 'presence') %>%
+    mutate(scientificName = case_when(
+      taxonID == "alcalc" ~ "Alces alces",
+      taxonID == "capibe" ~ "Capra ibex",
+      taxonID == "cappyr" ~ "Capra pyrenaica",
+      taxonID == "cerela" ~ "Cervus elaphus",
+      taxonID == "ruprup" ~ "Rupicapra rupicapra",
+      taxonID == "susscr" ~ "Sus scrofa",
+      taxonID == "capcap" ~ "Capreolus capreolus",
+      taxonID == "bisbon" ~ "Bison bonasus",
+      taxonID == "capaeg" ~ "Capra aegagrus",
+      taxonID == "ruppyr" ~ "Rupicapra pyrenaica",
+      taxonID == "rantar" ~ "Rangifer tarandus",
+      taxonID == "ruporn" ~ "Rupicapra pyrenaica ornata",
+      taxonID == "canlup" ~ "Canis lupus",
+      taxonID == "ursarc" ~ "Ursus arctos",
+      taxonID == "lynlyn" ~ "Lynx lynx",
+      taxonID == "gulgul" ~ "Gulo gulo",
+      taxonID == "lynpar" ~ "Lynx pardinus",
+      TRUE ~ NA_character_),
+      country = country,
+      decimalLatitude = NA_real_,
+      decimalLongitude = NA_real_,
+      basisOfRecord = 'MaterialCitation') %>% 
+    mutate(eventID = ifelse(presence == 0, NA, eventID))
+  
+  eu_mammals_occ_data_long[[country]] <- mammals_occ_df_long
+}
+
+# Extract centroids and coordinates and create a harmonized data frame
+eu_mammals_occ_pts <- list()
+
+for (country in names(eu_mammals_occ_data_long)) {
+  shp_files <- eu_mammals_occ_data_long[[country]]
+  
+  shp_files_pts <- st_centroid(st_as_sf(shp_files)) %>%
+    mutate(decimalLongitude = st_coordinates(geometry)[,1],
+           decimalLatitude = st_coordinates(geometry)[,2]) %>%
+    as.data.frame() %>%
+    select(cellcode, taxonID, scientificName, presence, country, decimalLatitude, decimalLongitude, basisOfRecord, eventID)
+  
+  # Create a sf object and write it
+  shp_files_pts_sf <- st_as_sf(shp_files_pts, coords = c("decimalLongitude", "decimalLatitude"), crs = 3035)
+  
+  output_dir <- file.path(dir_europe, country, "spp")
+  
+  # Create the subfolder if it does not exist
+  if (!dir.exists(output_dir)) {
+    dir.create(output_dir, recursive = TRUE)
+  }
+  
+  # Define the output file paths
+  output_path <- file.path(output_dir, paste0(country, "_mammals_spp_pts.shp"))
+  output_path_gpkg <- file.path(output_dir, paste0(country, "_mammals_spp_pts.gpkg"))
+  output_path_csv <- file.path(output_dir, paste0(country, "_mammals_spp_pts.csv"))
+  
+  # Write the sf file
+  st_write(shp_files_pts_sf, output_path, delete_layer = TRUE, quiet = TRUE, append=FALSE)
+  st_write(shp_files_pts_sf, output_path_gpkg, driver = "gpkg", append=FALSE)
+  write.csv(shp_files_pts, output_path_csv, append=FALSE)
+  
+  cat("Shapefiles written to:", output_dir, "\n")
+  
+  eu_mammals_occ_pts[[country]] <- shp_files_pts
+}
+
+# Combine all country data into one data frame
+eu_mammals_occ_merged <- bind_rows(eu_mammals_occ_pts)
+
+# Add the occurrenceRemarks field in the final data set
+eu_mammals_occ_merged$occurrenceRemarks <- ifelse(eu_mammals_occ_merged$presence == 1, 'resident', 
+                                                  ifelse(eu_mammals_occ_merged$presence == 9, 'sporadic', 
+                                                         NA))
+
+View(eu_mammals_occ_merged)
+
+unique(eu_mammals_occ_merged$scientificName)
+
+# Save the final combined data set to files
+final_output_path <- "I:/biocon/Emmanuel_Oceguera/projects/Mammals_species_distribution_DarwingCore/output"
+st_write(st_as_sf(eu_mammals_occ_merged, coords = c("decimalLongitude", "decimalLatitude"), crs = 3035), paste0(final_output_path, "/mammals_ungulates_dwc_occ.gpkg"), driver = "gpkg")
+write.csv(eu_mammals_occ_merged, paste0(final_output_path, "/mammals_ungulates_dwc_occ.csv"), sep = " ", row.names = FALSE)
+
+# Save the R environment
+setwd("I:/biocon/Emmanuel_Oceguera/projects/Mammals_species_distribution_DarwingCore/code")
+save.image(file = 'mammals_dwc_15072024.RData')
+
+rm()
