@@ -15,35 +15,66 @@ rm(list = ls())
 gc()
 
 # Set the working directory
-setwd("I://biocon//Emmanuel_Oceguera//projects//Mammals_species_distribution_DarwingCore//output")
+setwd("I://path//to//yout//project//folder")
 getwd()
 
 # Import necessary libraries
 library(tidyverse)
 library(sf)
 library(stringr)
+library(RPostgres)
+library(DBI)
 
-# Load reference data sets
-event_id <- read.csv("I:/biocon/Emmanuel_Oceguera/projects/Mammals_species_distribution_DarwingCore/data/in_process/europe/10072024/02mammals_dwc_event.csv", sep = ",", header = TRUE)
-View(event_id)
+# function to write the data into postgres
+write_to_postgres <- function(con, data, table_name, schema) {
+  # we check whether the data is in a list or not
+  if (is.list(data) && !is.data.frame(data)){
+    # If it's a list, iterate over it
+    for (i in seq_along(data)){
+     current_table_name <- table_name[i]
+     dbWriteTable(con, Id(schema = schema, table = current_table_name), data[[i]], overwrite = TRUE, row.names = FALSE)
+    }
+  } else {
+    # If it's a single data frame 
+    dbWriteTable(con, Id(schema = schema, table = table_name), data, overwrite = TRUE, row.names = FALSE)
+  }
+}
 
 
+# Define your database connection parameters
+dbname <- "Data base name"
+host <- "localhost"
+port <- 5432
+user <- "postgres"
+password <- "your_password"
+
+# Establish the connection
+con <- dbConnect(RPostgres::Postgres(),
+                 dbname = dbname,
+                 host = host,
+                 port = port,
+                 user = user,
+                 password = password,
+                 options = "-c client_encoding=UTF8")
+
+
+# Import the table from the PostgreSQL database
+mammals_event <- dbGetQuery(con, "SELECT * FROM your table")
+View(mammals_event)
 
 # Replace "na" and blank values with NA in character columns
-event_id <- event_id %>%
+mammals_event <- mammals_event %>%
   mutate_if(is.character, ~na_if(., "na")) %>%
   mutate_all(is.character, ~na_if(., ""))
 
-View(event_id)
-write.csv(event_id, "I:/biocon/Emmanuel_Oceguera/projects/Mammals_species_distribution_DarwingCore/data/in_process/europe/10072024/mammals_dwc_event.csv",
-          col.names = T, row.names = F, sep = ",")
-
-
-unique(!is.na(event_id$yearIni))
-
+# check min and max year
+min_value <- min(mammals_event$yearIni, na.rm = T)
+print(min_value)
+max_value <- max(mammals_event$yearIni, na.rm = T)
+print(max_value)
 
 # Define the directory containing all European shapefiles
-dir_europe <- "I:/biocon/Emmanuel_Oceguera/projects/Mammals_species_distribution_DarwingCore/output"
+dir_europe <- "I:/folder/where/you/have_the_spp_shp/output"
 country_dirs <- list.dirs(dir_europe, recursive = FALSE, full.names = TRUE)
 
 # Create a list to store shapefiles by country
@@ -111,8 +142,6 @@ for (country in names(mammals_data_by_country)) {
   mammals_data_by_country_reorder[[country]] <- shp_files
 }
 
-# Check
-# mammals_data_by_country_reorder[5]
 
 
 # The goal of this code block is to aggregate mammal species distribution data by country, 
@@ -243,8 +272,10 @@ eu_mammals_occ_merged$occurrenceRemarks <- ifelse(eu_mammals_occ_merged$presence
                                                   ifelse(eu_mammals_occ_merged$presence == 9, 'sporadic', 
                                                          NA))
 
+# Check it
 View(eu_mammals_occ_merged)
 
+# Check species names to ensure consitanci 
 unique(eu_mammals_occ_merged$scientificName)
 
 # Save the final combined data set to files
@@ -252,8 +283,11 @@ final_output_path <- "I:/biocon/Emmanuel_Oceguera/projects/Mammals_species_distr
 st_write(st_as_sf(eu_mammals_occ_merged, coords = c("decimalLongitude", "decimalLatitude"), crs = 3035), paste0(final_output_path, "/mammals_ungulates_dwc_occ.gpkg"), driver = "gpkg")
 write.csv(eu_mammals_occ_merged, paste0(final_output_path, "/mammals_ungulates_dwc_occ.csv"), sep = " ", row.names = FALSE)
 
-# Save the R environment
-setwd("I:/biocon/Emmanuel_Oceguera/projects/Mammals_species_distribution_DarwingCore/code")
-save.image(file = 'mammals_dwc_15072024.RData')
 
-rm()
+# Optianally we save the final file into Postgres
+table_name <- "table name"
+st_write(merged_data, dsn = con, layer = Id(schema = schema, table = table_name), append = F)
+
+
+# Disconnect from the database
+dbDisconnect(con)
