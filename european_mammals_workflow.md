@@ -29,14 +29,14 @@ Use the `manage_species_data.SQL` script to aggregate the uploaded point data:
 
 ### Step 4: Updating the Event Database
 
-Use the SQL script `update_dwc_events` to update the `eventID` and ensure that new sources are included in the event database:
-- **Updating EventIDs**: If you need to update an existing `eventID`, run the function `update_eventid_in_related_tables()` found in `eventID_trigger_function.SQL` before executing `update_dwc_events`. This ensures that all related tables are automatically updated with the new `eventID`.
+Use the SQL script `update_dwc_events.SQL` to update the `eventID` and ensure that new sources are included in the event database:
+- **Updating EventIDs**: If you need to update an existing `eventID`, run the function `update_eventid_in_related_tables()` found in `eventID_trigger_function.SQL` before executing `update_dwc_events.SQL`. This ensures that all related tables are automatically updated with the new `eventID`.
 - **Adding a New Source**: If you are adding a new event (source):
   - First, update the Excel table stored here: `data/csv/datasources_ungulates_full_biblio.xlsx`. This will generate the new `eventID`.
   - Then, update the event database in PostgreSQL using `update_dwc_events.SQL`.
   - Note: The new `eventID` will not automatically update related tables until it is added to the main occurrence databases: `mammals_ungulates_dwc_occ` (non-spatial) and `mammals_ungulates_dwc_occ_sf` (spatial).
 
-### Step 5: Integrating Occurrence Data into the EEA Grid
+### Step 5: Integrating Occurrence Data into the EEA Grid 
 
 Run the script `04_add_data_in_grid.R` to integrate species occurrence data into the EEA grid:
 - This script retrieves aggregated species occurrence data from the PostgreSQL database and maps it onto the specified EEA grid (e.g., 10km resolution).
@@ -87,7 +87,7 @@ If there are changes to species names, use the SQL script `Update_species_name.S
 
 ### Step 9: Rasterization of Species Data
 
-In the final step, run the `06_rasterize_data` script to create raster maps of each species' distribution at a European scale. This script accesses species occurrence data from the PostgreSQL database and integrates it with a standardized EEA grid.
+In the final step, run the `06_rasterize_data.R` script to create raster maps of each species' distribution at a European scale. This script accesses species occurrence data from the PostgreSQL database and integrates it with a standardized EEA grid.
 
 - The script processes both complete time ranges (e.g., *Alces alces* from 1890 to 2020) and occurrences with missing time information (for now).
 - It generates raster layers representing species' presence, absence, or other statuses, using values like `1` for presence and `5` for extinct.
