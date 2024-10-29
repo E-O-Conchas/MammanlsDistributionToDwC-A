@@ -2,8 +2,9 @@
 # Workflow for Updating and Incorporating Databases into the European Mammals Project
 
 This workflow outlines the process of updating and integrating new mammal species data into the European Mammals Database. The steps below ensure consistency, accuracy, and proper alignment with existing records.
+### Steps
 
-### Step 0: Georeferencing
+#Georeferencing
 
 If there are any associated images (e.g., scans, maps), georeference these using ArcGIS to ensure accurate spatial alignment.
 
