@@ -29,11 +29,11 @@ library(DBI)
 library(terra)
 
 # Define your database connection parameters
-dbname <- "naturaconnect"
-host <- "postgis02.srv.idiv.de"
+dbname <- ""
+host <- ""
 port <- 5432
-user <- "no67wuwu@usr.idiv.de"
-password <- "GinkoBiloba5294!"
+user <- "@usr.idiv.de"
+password <- ""
 
 # Establish the connection
 con <- dbConnect(RPostgres::Postgres(),
