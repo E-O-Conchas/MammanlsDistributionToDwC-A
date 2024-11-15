@@ -1,4 +1,4 @@
-# European Mammals Ungulates Distribution Workflow <img align="right" width="15%" src="fig/logo.jpg"> 
+# European Mammals Ungulates Distribution Workflow  <img align="right" width="20%" src="fig/logo.jpg"> 
 
 ## Introduction
 
