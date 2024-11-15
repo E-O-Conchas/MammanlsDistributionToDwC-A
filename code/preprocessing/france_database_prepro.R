@@ -175,13 +175,70 @@ for (year in unique_years) {
 
 
 
+# find out the total number of cell across all the year for species
+# Select the species-year columns
+distribution_columns <- grep("_\\d{4}$", colnames(eea_grid_fr), value = TRUE)
+
+# Pivot the data to long format for easier grouping and summarization
+distribution_long <- eea_grid_fr %>%
+  st_drop_geometry() %>% # Drop the geometry for simpler processing
+  pivot_longer(
+    cols = all_of(distribution_columns),
+    names_to = c("species", "year"),
+    names_sep = "_",
+    values_to = "presence"
+  )
+# View(distribution_long)
+
+# Filter only the rows where presence is 1
+distribution_summary <- distribution_long %>%
+  filter(presence > 0) %>% # Keep only presence data
+  group_by(species, year) %>% # Group by species and year
+  summarize(total_cells = n(), .groups = "drop") # Count the number of cells
+# View(distribution_summary)
+
+# Summarize the total cells by year across all species
+yearly_summary <- distribution_summary %>%
+  group_by(year) %>%
+  summarize(total_cells = sum(total_cells), .groups = "drop")
+# View(yearly_summary)
+
+# Summarize total cells by species across all years
+species_summary <- distribution_long %>%
+  filter(presence > 0) %>% # Keep only presence data
+  group_by(species) %>% # Group by species only
+  summarize(total_cells = n(), .groups = "drop") # Count the number of cells
+#View(species_summary)
+
+species_names_aligned <- tolower(unique(species_summary$species))
+species_names_aligned <-  paste0("FR_M_", unique(species_summary$species))
+
+
+# After vacation i need to create for each of the years a table to able to add it to the main database
+# We will need to add an extra column to the occ final database d indicating the year of the data for those that we have 
+# only one date for the occurrences 
+# 
+# Hybrid Approach
+# 
+# Keep the specific years in the occurrences table while summarizing the full year range in the eventID.
+# For example:
+#   In the events table: yearIni = 1900, yearEnd = 2023.
+# In the occurrences table: Each occurrence retains its specific year.
+# Advantages:
+#   Captures granular details while aligning with existing structure.
+#   Provides flexibility for queries by specific years or ranges.
+# Disadvantages:
+#   Requires adjustments to the Darwin Core archive generation process.
+
+
+
 # Define the speies to process
 species_list <- unique(species_code_by_year[[1]])
 unique(species_dis_sachsen$source)
 
+
 # Loop
 for (year in names(species_code_by_year)[[1]]){
-  
   
   # dynamically create column name (e.g. m_damdam, m_ovimus)
   new_column_name <-  paste0("m_", tolower(species_code))
