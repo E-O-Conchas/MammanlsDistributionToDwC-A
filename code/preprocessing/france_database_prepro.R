@@ -230,7 +230,7 @@ species_names_aligned <-  paste0("FR_M_", unique(species_summary$species))
 # Disadvantages:
 #   Requires adjustments to the Darwin Core archive generation process.
 
-
+# added
 
 # Define the speies to process
 species_list <- unique(species_code_by_year[[1]])
