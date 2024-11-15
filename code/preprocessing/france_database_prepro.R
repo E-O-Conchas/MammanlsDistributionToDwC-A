@@ -261,7 +261,7 @@ for (year in names(species_code_by_year)[[1]]){
 }
 
 
-
+save.image()
 
 
 
