@@ -136,14 +136,14 @@ unique(eea_grid_fr$DAMDAM_2023) # False
 
 # Visualize to confirm
 dam_dam_2023 <- eea_grid_fr[eea_grid_fr$DAMDAM_2023 == 1, ]
-plot(st_geometry(dam_dam_2023), col = "red", add = TRUE)
+plot(st_geometry(dam_dam_2023), col = "red")
 
 # Compare vs 1990
 dam_dam_1990 <- eea_grid_fr[eea_grid_fr$DAMDAM_1990 == 1, ]
 plot(st_geometry(dam_dam_1990), col = "yellow", add = TRUE)
 
 # overlap the original data from the species_by_year list
-plot(st_geometry(Ungulates_by_year$`1990`), col = "black", add = TRUE)
+plot(st_geometry(Ungulates_by_year$`2023`), col = "black", add = TRUE)
 
 # Define the output directory for saving files
 output_directory <- "raw_data\\France\\ungulates\\eeagrid_ungulates_by_year"
@@ -162,7 +162,7 @@ for (year in unique_years) {
   # Select columns for the current year, including geometry and grid identifiers
   year_grid <- eea_grid_fr %>%
     select(CELLCODE, EOFORIGIN, NOFORIGIN, all_of(year_columns), geometry)
-    mutate(eventID)
+    #mutate(eventID)
   
   # Define the output file path
   output_file <- file.path(output_directory, paste0("eea_grid_fr_", year, ".shp"))
@@ -172,3 +172,46 @@ for (year in unique_years) {
   
   cat("Saved grid for year:", year, "to", output_file, "\n")
 }
+
+
+
+# Define the speies to process
+species_list <- unique(species_code_by_year[[1]])
+unique(species_dis_sachsen$source)
+
+# Loop
+for (year in names(species_code_by_year)[[1]]){
+  
+  
+  # dynamically create column name (e.g. m_damdam, m_ovimus)
+  new_column_name <-  paste0("m_", tolower(species_code))
+  
+  # select and rename columns
+  eea_grid_sn_species <- eea_grid_sachsen %>% 
+    select(cellcode, eoforigin, noforigin, all_of(species_code), geom) %>% 
+    rename(!!new_column_name := all_of(species_code)) %>% 
+    mutate(eventID = "HAUDESN0659") # Add the eventID
+  
+  # Define the output file path for each each of the specie
+  output_file_path <-  paste0(output_germany, "/M_SN_", species_code, ".shp")
+  
+  # Write 
+  writeVector(vect(eea_grid_sn_species), output_file_path, overwrite=TRUE)
+  
+  # Print statement
+  cat("Shapefile creted for: ", species_code, "\n")
+  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
