@@ -49,4 +49,4 @@ po/*~
 rsconnect/
 
 #  exclude data folder, as it is too large to be uploaded into github
-data/csv
+**data/csv
