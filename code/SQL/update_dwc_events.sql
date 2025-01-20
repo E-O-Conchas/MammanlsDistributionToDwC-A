@@ -59,6 +59,39 @@ where "bibliographicCitation" = 'Hauer, S., & Ansorge, H. U. Zöphel (2009): Atl
 
 
 
+''' France '''
+-- Update Estonia 'EE' information as well as the eventID
+SELECT * FROM eu_mammals_darwin_core.mammals_dwc_event
+WHERE country='FR'
+
+-- The country does not exist yet in the dataset,
+-- we insert FR
+
+INSERT INTO eu_mammals_darwin_core.mammals_dwc_event (
+    "eventID", "specieCode", "cellCount", "country", 
+	"Region", "dataType", "yearIni", "yearEnd", "eventData", "DATA_SOURCES",
+	"pathway", "DOI, ISBN, ISSN", "bibliographicCitation"
+)
+VALUES (
+    'RESFR30700', -- Example event ID
+	'AMMLER, CAPIBE, CAPPYR, CERELA, CERNIP, DAMDAM, MUNREE, OVIMUS, RUPPYR, RUPRUP', -- List of species
+    30700, -- Cell count
+    'FR', -- Country code
+    NULL, -- Region (if not applicable)
+    'HUNT_STATS', -- Data type
+    1900, -- Start year
+    2023, -- End year
+    '1900-2023', -- Event-specific data
+    'Réseau Ongulés sauvages OFB-FNC-FDC', -- Data source
+    'https://professionnels.ofb.fr/fr/node/869', -- Pathway
+    NULL, -- DOI/ISBN/ISSN (if not applicable)
+    'Réseau Ongulés sauvages OFB-FNC-FDC. (n.d.). Réseau Ongulés sauvages [Dataset]. Office français de la biodiversité (OFB). Retrieved from https://professionnels.ofb.fr/index.php/fr/reseau-ongules-sauvages'
+);
+
+-- Check if the data has been inseted correctly.
+SELECT * FROM eu_mammals_darwin_core.mammals_dwc_event WHERE country = 'FR';
+
+
 '''This session is to update the specieColumn, including the additional species if needed'''
 -- update the specieCode column for Sachsen
 UPDATE eu_mammals_darwin_core.mammals_dwc_event
