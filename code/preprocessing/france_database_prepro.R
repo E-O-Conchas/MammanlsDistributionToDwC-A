@@ -82,9 +82,6 @@ ungulates_france <- ungulates_france %>%
   mutate(year = str_sub(code, start = -4, end = -1))
 View(ungulates_france)
 
-
-
-
 # Checks
 unique(is.na(ungulates_france$speciesCode)) # False
 unique(is.na(ungulates_france$year)) # False 
