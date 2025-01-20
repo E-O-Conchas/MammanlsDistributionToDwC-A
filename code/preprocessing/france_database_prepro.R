@@ -2,7 +2,6 @@
 rm(list = ls())
 gc()
 
-
 # import libraries
 library(sf)
 library(tidyverse)
@@ -10,12 +9,9 @@ library(here)
 library(terra)
 library(dplyr)
 
-
 # # Set the working directory, since the project is not storage in the github repository
 # we set our work directory where the github repository is
 # setwd("I:\\biocon\\Emmanuel_Oceguera\\projects\\Mammals_species_distribution_DarwingCore\\github\\MammanlsDistributionToDwC-A")
-
-
 
 # Load the data
 path_ungulates <- 'data/large_mammals/france/eco_met_reseau_os_repartition_ongules_pol_2154.shp'
@@ -196,7 +192,6 @@ plot(st_geometry(RUPRUP_1987), col = "yellow", add = TRUE)
 #   Requires adjustments to the Darwin Core archive generation process.
 
 
-
 # Define the output directory for saving files
 getwd()
 output_directory <- "output\\data\\france\\ungulates"
@@ -263,8 +258,6 @@ for (year in names(results_by_year)) {
     terra::writeVector(vect(species_data), output_file, overwrite = TRUE)
   }
 }
-
-
 
 
 
