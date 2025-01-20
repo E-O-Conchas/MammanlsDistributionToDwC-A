@@ -272,7 +272,6 @@ for (year in names(results_by_year)) {
 
 
 
-
 ### Calcaulate some metrics let it for the future
 # 
 # # find out the total number of cell across all the year for species
