@@ -55,6 +55,9 @@ country_dirs <- list.dirs(data_dir, recursive = FALSE, full.names = TRUE)
 # Create a list to store shapefiles by country
 shapefiles_by_country <- list()
 
+# Initialize issues log
+issues_log <- list()
+
 # Loop through each country directory and collect the shapefiles
 for (country_dir in country_dirs) {
   country_name <- basename(country_dir)
@@ -300,9 +303,8 @@ st_write(eu_mammals_occ_merged_sf,
          append = FALSE,
          delete_layer = TRUE) # Overwrite the existing table
 
-                                                     
-                                                            
-                                                                
-                                                                
-                                                                
-                                                                
+
+
+
+
+
