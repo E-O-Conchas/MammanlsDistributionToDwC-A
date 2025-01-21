@@ -23,7 +23,9 @@ library(RPostgres)
 library(DBI)
 library(yaml)
 
-
+# Set temporary directory for terra operations
+terraOptions(tempdir = "D:\\Emmanuel_Oceguera\\Critical_ecosystem_northamerica_and_caribbean\\temp")
+getwd()
 # access to the config path
 config_path <- "I:/biocon/Emmanuel_Oceguera/projects/Mammals_species_distribution_DarwingCore/config/config.yml"
 config <- yaml::read_yaml(config_path)
@@ -56,7 +58,7 @@ shapefiles_by_country <- list()
 # Loop through each country directory and collect the shapefiles
 for (country_dir in country_dirs) {
   country_name <- basename(country_dir)
-  shp_files <- list.files(country_dir, pattern = "\\.shp$", full.names = TRUE)
+  shp_files <- list.files(country_dir, pattern = "\\.shp$", full.names = TRUE, recursive = TRUE)
   shapefiles_by_country[[country_name]] <- shp_files
 }
 
