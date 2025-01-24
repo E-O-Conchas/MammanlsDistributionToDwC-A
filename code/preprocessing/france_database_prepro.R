@@ -71,7 +71,7 @@ species_code_map <- c(
 # Add the species code to the data
 ungulates_france <- ungulates_france %>% 
   mutate(speciesCode = species_code_map[scientificName])
-#View(ungulates_france)
+View(ungulates_france)
 
 # Create a year column base on the date in the code column
 ungulates_france <- ungulates_france %>%
@@ -104,6 +104,8 @@ for (sp in unique_species){
 # We need to loop this by year for each of the species, so we dont lose the year info by species
 # otherwise we  wont know which grids are for wichi years
 results_by_year <- list()
+
+
 for (year in unique_years){
   cat("processing year:", year, "\n")
   # Create a copy of the grid for this year
@@ -111,7 +113,7 @@ for (year in unique_years){
   
   # Now we loop over the species
   for (sp in names(france_ungualates_spp)){
-    cat("processing species:", sp, "for the year:", year, "\n")
+    cat("processing species:", sp, "for the year:", year, "\n") 
     
     species_data <-  france_ungualates_spp[[sp]] # extract the data by the species names
     species_data_year <- species_data[species_data$year == year,] # Filter by year
@@ -215,14 +217,14 @@ names(results_by_year[[1]])
 
 # Flatten the species list to get unique speices acroos   
 # unique_species <- unique(unlist(species_list))[4:13]
-unique_species <- unique(names(results_by_year[[1]]))[5:14]
+unique_species <- unique(names(results_by_year[[1]]))[6:15]
   
 # Loop over each unique year and save the grid
 for (year in names(results_by_year)) {
   
   data_year <- results_by_year[[year]] %>% 
     mutate(YEAR = year) # Add the year column
-  
+ 
   # Define year folder 
   year_folder <- file.path(output_directory, year)
   #print(year_folder)
@@ -249,7 +251,7 @@ for (year in names(results_by_year)) {
     species_data <- data_year %>% 
       select(CELLCODE, EOFORIGIN, NOFORIGIN, YEAR, all_of(species_code), geometry) %>%
       rename(!!new_column_name := all_of(species_code)) %>%
-      mutate(eventID = "NOJH6465") # Set the right eventID
+      mutate(eventID = "RESFR30700") # Set the right eventID
 
     # Define the output file path for the species within the year folder
     output_file <- file.path(year_folder, paste0("M_", toupper(species_code), ".shp"))
@@ -260,7 +262,7 @@ for (year in names(results_by_year)) {
 }
 
 
-
+#
 
 ### Calcaulate some metrics let it for the future
 # 
