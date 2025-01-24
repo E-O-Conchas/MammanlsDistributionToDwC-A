@@ -71,14 +71,15 @@ process_shapefile <- function(dataset_path) {
   shp_data <- st_read(dataset_path, quiet = TRUE)
   
   # Dynamically determine the species code column name based on the file name
-  species_code <- tolower(str_extract(basename(dataset_path), "(?<=_)[^_]+(?=//.shp$)"))
+  species_code <- tolower(str_extract(basename(dataset_path), "(?<=_)[^_]+(?=\\.shp$)"))
+
   
   if (is.na(species_code)) {
     issues_log[[dataset_path]] <- "Species code could not be determined"
     return(NULL)
   }
   
-  cat("Species code:", species_code, " ", "/n")
+  cat("Species code:", species_code, " ", "\n")
   
   column_name <- paste0("m_", species_code)
   
