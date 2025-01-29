@@ -23,9 +23,6 @@ library(RPostgres)
 library(DBI)
 library(yaml)
 
-# Set temporary directory for terra operations
-terraOptions(tempdir = "D:\\Emmanuel_Oceguera\\Critical_ecosystem_northamerica_and_caribbean\\temp")
-getwd()
 # access to the config path
 config_path <- "I:/biocon/Emmanuel_Oceguera/projects/Mammals_species_distribution_DarwingCore/config/config.yml"
 config <- yaml::read_yaml(config_path)
@@ -48,31 +45,15 @@ con <- dbConnect(RPostgres::Postgres(),
                  password = password,
                  options = "-c client_encoding=UTF8")
 
-
-# Define directory containing all European shapefiles
-country_dirs <- list.dirs(data_dir, recursive = FALSE, full.names = TRUE)
-
-# Create a list to store shapefiles by country
-shapefiles_by_country <- list()
-
-# Initialize issues log
-issues_log <- list()
-
-# Loop through each country directory and collect the shapefiles
-for (country_dir in country_dirs) {
-  country_name <- basename(country_dir)
-  shp_files <- list.files(country_dir, pattern = "\\.shp$", full.names = TRUE, recursive = TRUE)
-  shapefiles_by_country[[country_name]] <- shp_files
-}
-
-# Function to process individual shapefiles and extract relevant columns
+### Defined functions ###
+# Function to process individual shape files and extract relevant columns
 process_shapefile <- function(dataset_path) {
   # Read the shapefile
   shp_data <- st_read(dataset_path, quiet = TRUE)
   
   # Dynamically determine the species code column name based on the file name
   species_code <- tolower(str_extract(basename(dataset_path), "(?<=_)[^_]+(?=\\.shp$)"))
-
+  
   
   if (is.na(species_code)) {
     issues_log[[dataset_path]] <- "Species code could not be determined"
@@ -89,9 +70,14 @@ process_shapefile <- function(dataset_path) {
     return(NULL)
   }
   
+  # Add the year column if it does not exist
+  if (!"YEAR" %in% colnames(shp_data)){
+    shp_data$YEAR <- NA # Assing NA to the YEAR column missing datasets
+    
+  }
   # Select the required columns: the first three columns, the species-specific column, and 'eventID'
   shp_data_selected <- shp_data %>%
-    select(1:3, all_of(column_name), "eventID")
+    select(1:3, all_of(column_name), "eventID", "YEAR")
   
   # Rename the species-specific column to include the species code for clarity
   colnames(shp_data_selected)[4] <- species_code
@@ -110,56 +96,163 @@ process_shapefile <- function(dataset_path) {
 }
 
 
-# Process all shapefiles and combine the results by country
+### List all the shape file  by countries ###
+# Define directory containing all European shapefiles
+country_dirs <- list.dirs(data_dir, recursive = FALSE, full.names = TRUE)
+# Initialize issues log
+issues_log <- list()
+# Define a list to save the resuts
+shapefiles_by_country <- list()
+# Loop through each country
+for (country_dir in country_dirs) {
+  cat("Processing:", basename(country_dir), "\n")
+  # Extract base name
+  country_name <- basename(country_dir)
+  # List the shapefiles 
+  shp_files <- list.files(country_dir, pattern = "\\.shp$", full.names = TRUE, recursive = TRUE)
+  # Append the path to the list
+  shapefiles_by_country[[country_name]] <- shp_files
+}
+
+
+### Combine all the shape files by country ###
+
+# Deine a list to save the results
 mammals_data_by_country <- list()
 
+# Loop trough each country
 for (country in names(shapefiles_by_country)) {
+  cat("Processing:", country, "\n")
   shp_files <- shapefiles_by_country[[country]]
+  
+  # Process the shp using the costume function
   combined_data_list <- lapply(shp_files, process_shapefile)
+  # Combine the tables
   combined_data <- bind_rows(combined_data_list[!sapply(combined_data_list, is.null)])
   mammals_data_by_country[[country]] <- combined_data
 }
 
+# Check the data
+# mammals_data_by_country[[1]]
+# View(mammals_data_by_country)
 
-# Reorder columns and fill missing values
+### reorder Columns and fill missing Values ###
+
+# Define the list to save the reorder results
 mammals_data_by_country_reorder <- list()
-
+# Loop trough each country
 for (country in names(mammals_data_by_country)) {
-  shp_files <- mammals_data_by_country[[country]] %>%
-    select(-c(eventID, geometry), everything(), eventID, geometry)
-  shp_files[is.na(shp_files)] <- 0
+  cat("Processing:", country, "\n")
+  shp_files <- mammals_data_by_country[[country]] 
+  # Filter the the shapefile with null values and we reorder the columns
+  if(!is.null(shp_files)){
+    shp_files <- shp_files %>% 
+      select(-c(eventID, geometry), everything(), YEAR, eventID, geometry)
+    
+    # Replace NA (all the species columns must be numeric)
+    shp_files <- shp_files %>%
+      mutate(across(where(is.numeric), ~ ifelse(is.na(.), 0, .)))
+  }
   mammals_data_by_country_reorder[[country]] <- shp_files
 }
 
-# Define species codes for pattern matching
+# Check
+# head(mammals_data_by_country_reorder)[[11]])
+# View(mammals_data_by_country_reorder)
+
+### Standardize Columns across all the countries ###
+
+# Define  fixed columns
+standard_fixed_colnames <- c("cellcode", "eoforigin", "noforigin", "year", "eventID", "geometry")
+
+# Loop through each element in the list
+for (i in names(mammals_data_by_country_reorder)) {
+  cat("processing:", i, "\n")
+  # Get the current column names of the element
+  current_colnames <- colnames(mammals_data_by_country_reorder[[i]])
+  
+  # Standardize only the fixed column names, keeping species columns intact
+  standardized_colnames <- current_colnames
+  standardized_colnames[match(tolower(standard_fixed_colnames), tolower(current_colnames))] <- standard_fixed_colnames
+
+  # Apply the standardized column names back to the dataset
+  colnames(mammals_data_by_country_reorder[[i]]) <- standardized_colnames
+}
+
+# Verify the updated column names
+# sapply(mammals_data_by_country_reorder, colnames)
+# names(mammals_data_by_country_reorder[[32]])
+
+### Remove duplicate columns across all the countries ###
+# After align the column names I found out that some species were some columns are duplicated
+
+# Loop through each element in the list to standardize column names
+for (i in seq_along(mammals_data_by_country_reorder)) {
+  # Get the current column names of the element
+  current_shp <- mammals_data_by_country_reorder[[i]]
+  # print(names(current_shp)) 
+  # Define the column names that we want to exclude from the data set
+  columns_to_delete <- c("EofOrigin", "NofOrigin")
+  # Check if any of the columns exist in the dataset
+  columns_present <- columns_to_delete[columns_to_delete %in% colnames(current_shp)]
+  # Filter out the columns to delete
+  if (length(columns_present) > 0){
+    current_shp <- current_shp %>% select(-all_of(columns_present))
+    # Append to the list
+    mammals_data_by_country_reorder[[i]] <- current_shp
+  }else{
+    cat("Columns not found in the data set . Skipping deletion step.\n")
+  }
+}
+
+for (i in seq_along(mammals_data_by_country_reorder)) {
+  current_shp <- mammals_data_by_country_reorder[[i]]
+  
+  # Identify and remove truly duplicated column names
+  unique_cols <- !duplicated(names(current_shp))  
+  current_shp <- current_shp[, unique_cols, drop = FALSE]
+  
+  # Assign the cleaned dataset back
+  mammals_data_by_country_reorder[[i]] <- current_shp
+}
+
+#Check the List to see if the extra columns were remove
+sapply(mammals_data_by_country_reorder, colnames)
+names(mammals_data_by_country_reorder[['Portugal']]) # it has duplicate columns
+
+
+#### Aggregate data by country, summarizing by species presence in each spatial cell ###
+
+# Define species codes 
 species_codes_list <- c(
   # Ungulates
-  "alcalc", "capibe", "cappyr", "cerela", "ruprup", "susscr", 
-  "capcap", "bisbon", "capaeg", "ruppyr", "rantar", "ruporn", 
+  "alcalc","ammler","capibe", "cappyr", "cerela", "ruprup", "susscr", 
+  "capcap", "bisbon", "capaeg", "ruppyr", "rantar", "ruporn", "munree", 
   "ovimus", "damdam", "cernip","oviamm",
-  
   # Carnivores
-  "canlup", "lynlyn", "lynpar", "gulgul", "ursarc"
-)
-
-
+  "canlup", "lynlyn", "lynpar", "gulgul", "ursarc")
+# Use as patter
 species_patter <- paste(species_codes_list, collapse = "|")
 
-# Aggregate data by country, summarizing by species presence in each spatial cell
+
 eu_mammals_occ_data_grouped <- list()
 
+# Loop through  each of the countries
 for (country in names(mammals_data_by_country_reorder)) {
+  # Get the country shp file
   shp_files <- mammals_data_by_country_reorder[[country]]
+  # Get the species columns
   species_columns <- colnames(shp_files)[grepl(species_patter, colnames(shp_files))]
-  
+  cat(colnames(species_columns), "\n")
   # Summarize data, keeping the maximum presence value within each cell
   shp_files_grouped <- shp_files %>%
-    group_by(cellcode, eventID) %>%
+    group_by(cellcode, eoforigin, noforigin, eventID, year) %>%
     summarise(across(all_of(species_columns), ~ max(.x, na.rm = TRUE)), .groups = 'drop')
   
   eu_mammals_occ_data_grouped[[country]] <- shp_files_grouped
 }
 
+head(eu_mammals_occ_data_grouped['Albania'])
 
 
 # Write the output files to the respective country folder
