@@ -252,10 +252,14 @@ for (country in names(mammals_data_by_country_reorder)) {
   eu_mammals_occ_data_grouped[[country]] <- shp_files_grouped
 }
 
+
+# Check
 head(eu_mammals_occ_data_grouped['Albania'])
 
 
-# Write the output files to the respective country folder
+#### Write the output files to the respective country folder ####
+
+# Loop trough each of the countries
 for (country in names(eu_mammals_occ_data_grouped)) {
   
   # Define the path to the spp folder
