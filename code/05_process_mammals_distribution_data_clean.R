@@ -239,29 +239,31 @@ eu_mammals_occ_data_grouped <- list()
 
 # Loop through  each of the countries
 for (country in names(mammals_data_by_country_reorder)) {
-  # Get the country shp file
-  shp_files <- mammals_data_by_country_reorder[[country]]
-  # Get the species columns
-  species_columns <- colnames(shp_files)[grepl(species_patter, colnames(shp_files))]
-  cat(colnames(species_columns), "\n")
-  # Summarize data, keeping the maximum presence value within each cell
-  shp_files_grouped <- shp_files %>%
-    group_by(cellcode, eoforigin, noforigin, eventID, year) %>%
-    summarise(across(all_of(species_columns), ~ max(.x, na.rm = TRUE)), .groups = 'drop')
-  
+  if (country == "France") { next } # This time we skip france because we alredy prove that the loop works
+    cat("Processing:", country, "\n")
+    # Get the country shp file
+    shp_files <- mammals_data_by_country_reorder[[country]]
+    # Get the species columns
+    species_columns <- colnames(shp_files)[grepl(species_patter, colnames(shp_files))]
+    cat(colnames(species_columns), "\n")
+    # Summarize data, keeping the maximum presence value within each cell
+    shp_files_grouped <- shp_files %>%
+      group_by(cellcode, eoforigin, noforigin, eventID, year) %>%
+      summarise(across(all_of(species_columns), ~ max(.x, na.rm = TRUE)), .groups = 'drop') %>% 
+      filter(if_any(all_of(species_columns), ~ .x > 0))
   eu_mammals_occ_data_grouped[[country]] <- shp_files_grouped
-}
+} 
 
 
 # Check
-head(eu_mammals_occ_data_grouped['Albania'])
-
+head(eu_mammals_occ_data_grouped['France'])
+View(eu_mammals_occ_data_grouped['France'])
 
 #### Write the output files to the respective country folder ####
-
+dir_europe <- "I:\\biocon\\Emmanuel_Oceguera\\projects\\Mammals_species_distribution_DarwingCore\\output\\raw_species_by_country"
 # Loop trough each of the countries
-for (country in names(eu_mammals_occ_data_grouped)) {
-  
+for (country in names(eu_mammals_occ_data_grouped['France'])) {
+  cat("Processing:", country, "\n")
   # Define the path to the spp folder
   output_dir <- file.path(dir_europe, country, "spp")
   
@@ -275,7 +277,7 @@ for (country in names(eu_mammals_occ_data_grouped)) {
   
   # Define the output  fot he shapefile
   output_path <- file.path(output_dir, paste0(tolower(country), "_mammals_spp_grid.shp"))
-  
+  cat("The final compiled dataset for", country, "will be stored in:", output_dir)
   # Write the summarized shapefiles
   st_write(eu_mammals_occ_data_grouped[[country]], output_path, delete_layer = TRUE, quiet = TRUE)
 }
