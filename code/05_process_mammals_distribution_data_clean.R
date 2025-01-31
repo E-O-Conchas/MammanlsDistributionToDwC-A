@@ -27,6 +27,9 @@ library(yaml)
 config_path <- "I:/biocon/Emmanuel_Oceguera/projects/Mammals_species_distribution_DarwingCore/config/config.yml"
 config <- yaml::read_yaml(config_path)
 
+# Define the output file
+dir_europe <- "I:\\biocon\\Emmanuel_Oceguera\\projects\\Mammals_species_distribution_DarwingCore\\output\\raw_species_by_country"
+
 # Get the connection parameters from the configuration file
 dbname <- config$db$name
 host <- config$db$host
@@ -244,8 +247,10 @@ for (country in names(mammals_data_by_country_reorder)) {
     # Get the country shp file
     shp_files <- mammals_data_by_country_reorder[[country]]
     # Get the species columns
-    species_columns <- colnames(shp_files)[grepl(species_patter, colnames(shp_files))]
-    cat(colnames(species_columns), "\n")
+    # Get species columns
+    species_columns <- grep(species_patter, names(shp_files), value = TRUE)
+    cat("Species columns:", species_columns, "\n")
+    
     # Summarize data, keeping the maximum presence value within each cell
     shp_files_grouped <- shp_files %>%
       group_by(cellcode, eoforigin, noforigin, eventID, year) %>%
@@ -257,12 +262,12 @@ for (country in names(mammals_data_by_country_reorder)) {
 
 # Check
 head(eu_mammals_occ_data_grouped['France'])
-View(eu_mammals_occ_data_grouped['France'])
+View(eu_mammals_occ_data_grouped[['France']])
 
 #### Write the output files to the respective country folder ####
-dir_europe <- "I:\\biocon\\Emmanuel_Oceguera\\projects\\Mammals_species_distribution_DarwingCore\\output\\raw_species_by_country"
+
 # Loop trough each of the countries
-for (country in names(eu_mammals_occ_data_grouped['France'])) {
+for (country in names(eu_mammals_occ_data_grouped)) {
   cat("Processing:", country, "\n")
   # Define the path to the spp folder
   output_dir <- file.path(dir_europe, country, "spp")
@@ -287,13 +292,17 @@ for (country in names(eu_mammals_occ_data_grouped['France'])) {
 eu_mammals_occ_data_long <- list()
 
 for (country in names(eu_mammals_occ_data_grouped)) {
+  cat("Processing:", country, "\n")
   shp_files <- eu_mammals_occ_data_grouped[[country]]
+  species_columns <- grep(species_patter, names(shp_files), value = TRUE)
   
   mammals_occ_df_long <- as.data.frame(shp_files) %>%
-    pivot_longer(cols = where(is.numeric), names_to = 'taxonID', values_to = 'presence') %>%
+    pivot_longer(cols = all_of(species_columns), names_to = 'taxonID', values_to = 'presence') %>%
+    #pivot_longer(cols = where(is.numeric), names_to = 'taxonID', values_to = 'presence') %>%
     mutate(scientificName = case_when(
       # Ungulates
       taxonID == "alcalc" ~ "Alces alces",
+      taxonID == "ammler" ~ "Ammotragus lervia",
       taxonID == "capibe" ~ "Capra ibex",
       taxonID == "cappyr" ~ "Capra pyrenaica",
       taxonID == "cerela" ~ "Cervus elaphus",
@@ -308,6 +317,7 @@ for (country in names(eu_mammals_occ_data_grouped)) {
       taxonID == "ovimus" ~ "Ovis aries musimon",
       taxonID == "oviamm" ~ "Ovis ammon",
       taxonID == "damdam" ~ "Dama dama",
+      taxonID == "munree" ~ "Muntiacus reevesi",
       taxonID == "cernip" ~ "Cervus nippon",
       # Carnivors
       taxonID == "canlup" ~ "Canis lupus",
@@ -317,28 +327,35 @@ for (country in names(eu_mammals_occ_data_grouped)) {
       taxonID == "lynpar" ~ "Lynx pardinus",
       TRUE ~ NA_character_),
       country = country,
+      year = year,
+      eoforigin = eoforigin,
+      noforigin = noforigin, 
       decimalLatitude = NA_real_,
       decimalLongitude = NA_real_,
       basisOfRecord = 'MaterialCitation') %>% 
     mutate(eventID = eventID)
-  
+  cat("Table:", country, "- Successfully converted to long format")    
   eu_mammals_occ_data_long[[country]] <- mammals_occ_df_long
 }
 
-
+# checks
+View(eu_mammals_occ_data_long['France'])
 
 # Extract centroids and coordinates and create a harmonized data frame
 eu_mammals_occ_pts <- list()
 
 for (country in names(eu_mammals_occ_data_long)) {
+  cat("Processing:", country, "\n")
   shp_files <- eu_mammals_occ_data_long[[country]]
   
   shp_files_pts <- st_centroid(st_as_sf(shp_files)) %>%
     mutate(decimalLongitude = st_coordinates(geometry)[,1],
            decimalLatitude = st_coordinates(geometry)[,2]) %>%
     as.data.frame() %>%
-    select(cellcode, taxonID, scientificName, presence, country, decimalLatitude, decimalLongitude, basisOfRecord, eventID)
+    select(cellcode, eoforigin, noforigin, taxonID, scientificName, presence, country, decimalLatitude, decimalLongitude, basisOfRecord, year, eventID)
+  cat("Centroids calculated \n")
   
+  View(shp_files_pts)
   # Create a sf object and write it
   shp_files_pts_sf <- st_as_sf(shp_files_pts, coords = c("decimalLongitude", "decimalLatitude"), crs = 3035)
   
@@ -364,31 +381,47 @@ for (country in names(eu_mammals_occ_data_long)) {
   eu_mammals_occ_pts[[country]] <- shp_files_pts
 }
 
+
+# convert the reference columns for the grid to a numeric
+eu_mammals_occ_pts <- lapply(eu_mammals_occ_pts, function(df){
+  df$eoforigin <- as.numeric(df$eoforigin)
+  df$noforigin <- as.numeric(df$noforigin)
+  return(df)
+})
+
+# Checks
+# View(eu_mammals_occ_pts[[11]])
+
 # Combine all country data into one data frame
 eu_mammals_occ_merged <- bind_rows(eu_mammals_occ_pts)
 
+# Add occurrence remarks to the data set
+eu_mammals_occ_merged$occurrenceRemarks <-  ifelse(eu_mammals_occ_merged$presence == 0, 'absence',
+                                                   ifelse(eu_mammals_occ_merged$presence == 1, 'resident',
+                                                          ifelse(eu_mammals_occ_merged$presence == 9, 'sporadic',
+                                                                 ifelse(eu_mammals_occ_merged$presence == 5, 'extinct', NA))))
 
-# Add occurrence remarks
-eu_mammals_occ_merged$occurrenceRemarks <- ifelse(eu_mammals_occ_merged$presence == 1, 'resident', 
-                                                  ifelse(eu_mammals_occ_merged$presence == 9, 'sporadic',
-                                                         ifelse(eu_mammals_occ_merged$presence == 5, 'extinct', NA)))
-                                                         
                                                                 
+### Save the final combined data set to files
+st_write(st_as_sf(eu_mammals_occ_merged, 
+                  coords = c("decimalLongitude", "decimalLatitude"), 
+                  crs = 3035),
+         file.path("output", "mammals_ungulates_dwc_occ.gpkg"), driver = "gpkg")
 
 
-# # Save the final combined data set to files
-# final_output_path <- "I:/biocon/Emmanuel_Oceguera/projects/Mammals_species_distribution_DarwingCore/output"
-# st_write(st_as_sf(eu_mammals_occ_merged, coords = c("decimalLongitude", "decimalLatitude"), crs = 3035), paste0(final_output_path, "/mammals_ungulates_dwc_occ.gpkg"), driver = "gpkg")
+#### Import the the result and harmonized data set to Postgres as sf object and table ####
 
-# optionally
-# We export the merged final file into the postgres
-# Specify the shema where we want to save the files
+# Define the tables names
 table_name <- 'mammals_ungulates_dwc_occ'
 table_name_sf <- 'mammals_ungulates_dwc_occ_sf'
+# Define the schema, where our data base is storaged
 schema <- 'eu_mammals_darwin_core'
 
-# convert data frame to shp object
-eu_mammals_occ_merged_sf <- st_as_sf(eu_mammals_occ_merged, coords = c("decimalLongitude", "decimalLatitude"), crs = 3035)
+# convert data frame to sf  object
+eu_mammals_occ_merged_sf <- st_as_sf(eu_mammals_occ_merged, 
+                                     coords = c("decimalLongitude", "decimalLatitude"), 
+                                     dim = "XYZ",
+                                     crs = 3035)
 
 # Write the table from the list to the postgresSQL database
 st_write(eu_mammals_occ_merged, 
