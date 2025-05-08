@@ -28,13 +28,18 @@ library(RPostgres)
 library(DBI)
 library(terra)
 
-# Define your database connection parameters
-dbname <- ""
-host <- ""
-port <- 5432
-user <- "@usr.idiv.de"
-password <- ""
+# access to the config path
+config_path <- "I:/biocon/Emmanuel_Oceguera/projects/Mammals_species_distribution_DarwingCore/config/config.yml"
+config <- yaml::read_yaml(config_path)
 
+# Get the connection parameters from the configuration file
+dbname <- config$db$name
+host <- config$db$host
+port <- config$db$port
+user <- config$db$user
+password <- config$db$password
+data_dir <- config$paths$data_dir
+output_dir <- config$paths$output_dir
 # Establish the connection
 con <- dbConnect(RPostgres::Postgres(),
                  dbname = dbname,
@@ -48,7 +53,7 @@ con <- dbConnect(RPostgres::Postgres(),
 output_germany <- "I:\\biocon\\Emmanuel_Oceguera\\projects\\Mammals_species_distribution_DarwingCore\\output\\raw_species_by_country\\Germany\\test"
 
 
-####################### Sachsen #######################
+####################### Germany, State of Saxony #######################
 
 # Load the species distribution data
 species_dis_sachsen <- st_read(con, query = "SELECT * FROM eu_mammals_darwin_core.species_distribution_atlas_sachsen")
@@ -129,7 +134,7 @@ for (species_code in species_list){
 }
 
 
-####################### Thuringe #######################
+####################### Germany, State of Thuringen #######################
 
 # Load the species distribution data for Thuringen
 species_distribution_th <- st_read(con, query = "SELECT * FROM eu_mammals_darwin_core.species_distribution_atlas_thuringen")
@@ -200,6 +205,27 @@ for (species_code in species_list){
   
 }
 
+########### Review the full dataset
+
+# Load the species distribution data
+dwc_events <- dbGetQuery(con, "SELECT * FROM eu_mammals_darwin_core.mammals_dwc_event")
+View(dwc_events)
+unique(dwc_events$country)
+
+# Load the species distribution data
+dwc_e <- dbGetQuery(con, "SELECT * FROM  eu_mammals_darwin_core.mammals_ungulates_dwc_occ")
+unique(dwc_e$year)
+
+# let's get the Na values
+na_records <- dwc_e[dwc_e$year %in% c("NA", "na"), ]
+View(na_records)
+View(dwc_e)
+
+# check whcih countries
+unique(na_records$country)
+
+########### We always disconnect the db after we run anything ###########
+dbDisconnect(con) #disconnect from database
 
 
 

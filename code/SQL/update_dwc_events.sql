@@ -34,7 +34,7 @@ SET
     "bibliographicCitation" = 'Roasto R (2019). Estonian Nature Observations Database. Version 87.15. Estonian Environment Information Centre. Occurrence dataset https://doi.org/10.15468/dlblir accessed via GBIF.org on 2023-09-04.',  -- New source information
     "DOI, ISBN, ISSN" = 'https://doi.org/10.15468/dlblir'  -- New DOI information
 WHERE 
-    "country" = 'EE';  -- Condition to match the rows for Denmark (DK)
+    "country" = 'EE';  -- Condition to match the rows for Denmark (EE)
 
 -- Info to be insert
 -- Name of the source: 'Estonian Nature Observation database'
@@ -92,17 +92,99 @@ VALUES (
 SELECT * FROM eu_mammals_darwin_core.mammals_dwc_event WHERE country = 'FR';
 
 
-'''This session is to update the specieColumn, including the additional species if needed'''
+'''This section is to update the specieColumn, including the additional species if needed'''
 -- update the specieCode column for Sachsen
 UPDATE eu_mammals_darwin_core.mammals_dwc_event
 SET "specieCode" = "specieCode" || ',CERNIP, DAMDAM, CANLUP, LYNLYN, OVIAMM'
 WHERE country = 'DE' AND "eventID" = 'HAUDESN0659' AND "Region" = 'SN';
 
-
 -- update the specieCode column for Thuringen
 UPDATE eu_mammals_darwin_core.mammals_dwc_event
 SET "specieCode" = "specieCode" || ',DAMDAM, OVIMUS'
 WHERE country = 'DE' AND "eventID" = 'GÖRDETH0507' AND "Region" = 'TH';
+
+
+'''This section is to update the years for the country Estonia'''
+SELECT * FROM eu_mammals_darwin_core.mammals_dwc_event
+WHERE "country" = 'EE'
+
+-- update these three elemenst from Estonia, since they were wrong
+-- yearIni 1963 last record
+-- yearEnd 2018 recent record
+-- eventData 1963-2018 time period
+
+UPDATE eu_mammals_darwin_core.mammals_dwc_event
+SET "yearIni" = '1963'
+WHERE "yearIni" = '1890';
+
+UPDATE eu_mammals_darwin_core.mammals_dwc_event
+SET "yearEnd" = '2018' 
+WHERE "yearEnd" = '2019';
+
+UPDATE eu_mammals_darwin_core.mammals_dwc_event
+SET "eventData" = '1963-2018'
+WHERE "eventData" = '1890–2019';
+
+-- mote efficient way
+UPDATE eu_mammals_darwin_core.mammals_dwc_event
+SET 
+	"yearIni" = '1963',
+	"yearEnd" = '2018',
+	"eventData" = '1963-2018'
+WHERE "country" = 'EE';
+
+
+
+
+''' Poland '''
+SELECT * FROM eu_mammals_darwin_core.mammals_dwc_event
+WHERE "country" = 'PL'
+
+
+
+
+
+''' Portugal '''
+-- we need to update the country code since is seted as PL and not PT
+SELECT * FROM eu_mammals_darwin_core.mammals_dwc_event
+WHERE "country" = 'PT'
+
+UPDATE eu_mammals_darwin_core.mammals_dwc_event
+SET "country" = 'PT'
+WHERE "eventID" = 'BENPT2663' 
+
+--- Example to make an Update without commit the changes
+BEGIN;
+-- Test
+SELECT * FROM eu_mammals_darwin_core.mammals_dwc_event
+WHERE "country" = 'PT' AND "eventID" LIKE '%BENPT2663%';
+-- If okay:
+UPDATE eu_mammals_darwin_core.mammals_dwc_event
+SET "country" = 'PT'
+WHERE "country" = 'PL' AND "eventID" LIKE '%BENPT2663%';
+-- Then commit manually
+COMMIT;
+-----------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

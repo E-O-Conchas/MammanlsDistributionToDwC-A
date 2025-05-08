@@ -221,7 +221,7 @@ for (i in seq_along(mammals_data_by_country_reorder)) {
 
 #Check the List to see if the extra columns were remove
 sapply(mammals_data_by_country_reorder, colnames)
-names(mammals_data_by_country_reorder[['Portugal']]) # it has duplicate columns
+names(mammals_data_by_country_reorder[['Estonia']]) # it has duplicate columns
 
 
 #### Aggregate data by country, summarizing by species presence in each spatial cell ###
@@ -240,9 +240,12 @@ species_patter <- paste(species_codes_list, collapse = "|")
 
 eu_mammals_occ_data_grouped <- list()
 
+# names(eu_mammals_occ_data_grouped)
+# View(eu_mammals_occ_data_grouped[["Albania"]])
+
 # Loop through  each of the countries
 for (country in names(mammals_data_by_country_reorder)) {
-  if (country == "France") { next } # This time we skip france because we alredy prove that the loop works
+  #if (country == "France") { next } # This time we skip france because we alredy prove that the loop works
     cat("Processing:", country, "\n")
     # Get the country shp file
     shp_files <- mammals_data_by_country_reorder[[country]]
@@ -257,11 +260,11 @@ for (country in names(mammals_data_by_country_reorder)) {
       summarise(across(all_of(species_columns), ~ max(.x, na.rm = TRUE)), .groups = 'drop') %>% 
       filter(if_any(all_of(species_columns), ~ .x > 0))
   eu_mammals_occ_data_grouped[[country]] <- shp_files_grouped
-} 
+}
 
 
 # Check
-head(eu_mammals_occ_data_grouped['France'])
+head(eu_mammals_occ_data_grouped['Estonia'])
 View(eu_mammals_occ_data_grouped[['France']])
 
 #### Write the output files to the respective country folder ####
@@ -287,7 +290,7 @@ for (country in names(eu_mammals_occ_data_grouped)) {
   st_write(eu_mammals_occ_data_grouped[[country]], output_path, delete_layer = TRUE, quiet = TRUE)
 }
 
-
+View(eu_mammals_occ_data_grouped)
 # Transform dataset into long format
 eu_mammals_occ_data_long <- list()
 
@@ -339,7 +342,7 @@ for (country in names(eu_mammals_occ_data_grouped)) {
 }
 
 # checks
-View(eu_mammals_occ_data_long['France'])
+View(eu_mammals_occ_data_long[['Estonia']])
 
 # Extract centroids and coordinates and create a harmonized data frame
 eu_mammals_occ_pts <- list()
@@ -355,7 +358,7 @@ for (country in names(eu_mammals_occ_data_long)) {
     select(cellcode, eoforigin, noforigin, taxonID, scientificName, presence, country, decimalLatitude, decimalLongitude, basisOfRecord, year, eventID)
   cat("Centroids calculated \n")
   
-  View(shp_files_pts)
+  
   # Create a sf object and write it
   shp_files_pts_sf <- st_as_sf(shp_files_pts, coords = c("decimalLongitude", "decimalLatitude"), crs = 3035)
   
@@ -391,6 +394,7 @@ eu_mammals_occ_pts <- lapply(eu_mammals_occ_pts, function(df){
 
 # Checks
 # View(eu_mammals_occ_pts[[11]])
+View(eu_mammals_occ_pts)
 
 # Combine all country data into one data frame
 eu_mammals_occ_merged <- bind_rows(eu_mammals_occ_pts)
@@ -435,6 +439,8 @@ st_write(eu_mammals_occ_merged_sf,
          layer = Id(schema = schema, table = table_name_sf), 
          append = FALSE,
          delete_layer = TRUE) # Overwrite the existing table
+
+
 
 
 
