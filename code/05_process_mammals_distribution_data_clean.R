@@ -417,7 +417,7 @@ st_write(st_as_sf(eu_mammals_occ_merged,
 
 # Define the tables names
 table_name <- 'mammals_ungulates_dwc_occ'
-table_name_sf <- 'mammals_ungulates_dwc_occ_sf'
+table_name_sf <- 'mammals_ungulates_dwc_occ_sf_test'
 # Define the schema, where our data base is storaged
 schema <- 'eu_mammals_darwin_core'
 
@@ -441,6 +441,8 @@ st_write(eu_mammals_occ_merged_sf,
          delete_layer = TRUE) # Overwrite the existing table
 
 
+# Assuming you have a connection object called `con`
+DBI::dbGetQuery(con, "SELECT PostGIS_Version();")
 
 
 

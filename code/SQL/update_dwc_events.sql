@@ -103,7 +103,7 @@ UPDATE eu_mammals_darwin_core.mammals_dwc_event
 SET "specieCode" = "specieCode" || ',DAMDAM, OVIMUS'
 WHERE country = 'DE' AND "eventID" = 'GÖRDETH0507' AND "Region" = 'TH';
 
-
+''' Estonia ''' 
 '''This section is to update the years for the country Estonia'''
 SELECT * FROM eu_mammals_darwin_core.mammals_dwc_event
 WHERE "country" = 'EE'
@@ -134,13 +134,9 @@ SET
 WHERE "country" = 'EE';
 
 
-
-
 ''' Poland '''
 SELECT * FROM eu_mammals_darwin_core.mammals_dwc_event
 WHERE "country" = 'PL'
-
-
 
 
 
@@ -153,6 +149,7 @@ UPDATE eu_mammals_darwin_core.mammals_dwc_event
 SET "country" = 'PT'
 WHERE "eventID" = 'BENPT2663' 
 
+-----------------------------------------------------------
 --- Example to make an Update without commit the changes
 BEGIN;
 -- Test
@@ -164,8 +161,6 @@ SET "country" = 'PT'
 WHERE "country" = 'PL' AND "eventID" LIKE '%BENPT2663%';
 -- Then commit manually
 COMMIT;
------------------------------------------------------------
-
 
 
 

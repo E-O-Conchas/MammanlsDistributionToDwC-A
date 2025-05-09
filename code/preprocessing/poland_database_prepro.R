@@ -11,7 +11,7 @@ library(dplyr)
 
 # # Set the working directory, since the project is not storage in the github repository
 # we set our work directory where the github repository is
-# setwd("I:\\biocon\\Emmanuel_Oceguera\\projects\\Mammals_species_distribution_DarwingCore\\github\\MammanlsDistributionToDwC-A")
+setwd("I:\\biocon\\Emmanuel_Oceguera\\projects\\Mammals_species_distribution_DarwingCore\\github\\MammanlsDistributionToDwC-A")
 
 # Load the data
 root <- 'I:\\biocon\\Emmanuel_Oceguera\\projects\\Mammals_species_distribution_DarwingCore\\data\\raw_data\\Poland'
@@ -21,175 +21,118 @@ output_root <- "I:\\biocon\\Emmanuel_Oceguera\\projects\\Mammals_species_distrib
 output_dir <- file.path(output_root, "Poland")
 
 # Read csv
+# Read csv
+csv_path <- file.path(root, "0021372_fixed.csv")
+species_distribution <- read.csv(csv_path, header = TRUE)
+View(species_distribution)
+
+# We define the species code map
+species_list <- c(
+  "Alces alces", 
+  "Cervus elaphus", 
+  "Rupicapra rupicapra",
+  "Capreolus capreolus", 
+  "Dama dama", 
+  "Sus scrofa", 
+  "Cervus nippon",
+  "Ovis ammon"
+  )
+
+species_dis_filtered <- species_distribution %>% 
+  filter(species %in% species_list)
+
+# ungulates
+# | Taxon Code | Scientific Name     |
+# | ---------- | ------------------- |
+# | **alcalc** | Alces alces         |
+# | **cerela** | Cervus elaphus      |
+# | **ruprup** | Rupicapra rupicapra |
+# | **susscr** | Sus scrofa          |
+# | **capcap** | Capreolus capreolus |
+# | **damdam** | Dama dama           |
+# | **cernip** | Cervus nippon       |
+# | **oviamm** | Ovis ammon          |
+
+# # Carnivors   
+#   **bisbon** | Bison bonasus    
+#   **canlup** | Canis lupus     
+#   **ursarc** | Ursus arctos 
+#   **lynlyn** | Lynx lynx 
+
+species_dis_filtered
+# conver to a sf object 
+species_dis_filtered_sf <- st_as_sf(species_dis_filtered,
+                                    coords = c("decimalLongitude", "decimalLatitude"), 
+                                    crs = 4326)  # WGS84
+# reproject to LAEA Europe 3035
+species_dis_filtered_sf <- st_transform(species_dis_filtered_sf, crs=3035)
+
+# we save it to check it:
+file_path <- file.path(output_dir,"filtered_species_test.shp")
+st_write(species_dis_filtered_sf, file_path)
+
+# Import eea grid
+eea_grid_pl_path <- "data\\grid_ref_data\\poland\\pl_10km.shp"
+eea_grid_pl <- st_read(eea_grid_pl_path)
+
+# Reproject the ungulates data
+species_dis_filtered_sf <- st_transform(species_dis_filtered_sf, crs = st_crs(eea_grid_pl))
 
 
-
-# List all the shp files in the EE folder
-shp <- list.files(root, pattern = ".shp$", full.names = TRUE)
-
-# load all the sho files listes in the above root
-ungulates <- list()
-View(ungulates)
-
-for (shp_path in shp){  
-  # extract only the basenames
-  species_name <-  str_remove(basename(shp_path), ".shp")
-  species_name_clean <-  str_remove(species_name, "EE_")
-  #open data set
-  spp <- st_read(shp_path)
-  
-  # attached the shp file to the ungulates list
-  #ungulates[[basename]] <- spp 
-  # Skip if not year column
-  if(!"year" %in% colnames(spp)){
-    warning(paste("No 'year' column in:", species_name_clean))
-    next # we pass to the next loop if there is not issues
-  }
-  
-  # We loop over the unique year
-  for (yr in unique(spp$year) ){
-    
-    # Skip Na years
-    if(is.na(yr)) next
-    
-    # we subset for that year
-    spp_year <- spp %>% filter(year == yr)
-    
-    # Ensure the column is present
-    spp_year$year <- yr
-    
-    # Create the folder
-    year_folder <- file.path(output_dir, as.character(yr))
-    #dir.create(year_folder)
-    
-    #cat(year_folder, "\n")
-    # We append the final result into a list by species
-    #ungulates[[species_name_clean]] <- spp_year
-    
-    year_key <- as.character(yr)
-    #Define the output path
-    #out_path <-  file.path(year_folder, paste0(species_name_clean, ".shp"))
-    if(is.null(ungulates[[year_key]])){
-      ungulates[[year_key]] <- list()
-    }
-    #Save the final result
-    # st_write(spp_year,  out_path, append = FALSE, quiet = TRUE)
-    ungulates[[year_key]][[species_name_clean]] <- spp_year
-  }
-}
-
-names(ungulates[["2018"]])
-View(ungulates)
-names(ungulates[["2018"]][["M_SUSSCR"]])
-
-# Open the grid reference at 10km for Estonia
-eea_grid_ee_path <- "data/grid_ref_data/estonia/ee_10km.shp"
-eea_grid_ee <- st_read(eea_grid_ee_path)
-
-# head(eea_grid_fr)
-# names(eea_grid_fr)
-
-# Check the projection
-ungulates <- lapply(ungulates, function(year_data){
-  lapply(year_data, function(spp){
-    st_transform(spp, crs = st_crs(eea_grid_ee))
-  })
-})
+# Check the unique species
+spp_names <- unique(species_dis_filtered_sf$species)
 
 
-
-ungulates[["2018"]][["M_SUSSCR"]]$speciesCode
-
-
-# Map the own species codes to the species names
+# Map the species code
 species_code_map <- c(
-  "Alces alces"= "ALCALC",
+  "Dama dama" = "DAMDAM", 
+  "Alces alces" = "ALCALC",
+  "Rupicapra rupicapra" = "RUPRUP",
   "Cervus elaphus" = "CERELA",
+  "Sus scrofa" = "SUSSCR",
   "Capreolus capreolus" = "CAPCAP",
-  "Sus scrofa" = "SUSSCR"
+  "Cervus nippon" = "CERNIP",
+  "Ovis ammon" = "OVIAMM"
 )
 
+# Add the species code to the data
+ungulates_poland <- species_dis_filtered_sf %>% 
+  mutate(speciesCode = species_code_map[species])
+# check
+unique(ungulates_poland$speciesCode)
 
+# check max an min year
+year_max <- max(ungulates_poland$year)
+year_min <- min(ungulates_poland$year)
+# time period 1987-2020
 
-# Add species code to the data
-ungulates <- lapply(ungulates, function(year_data){
-  lapply(year_data, function(spp){
-    spp %>%
-      mutate(speciesCode = species_code_map[as.character(species)])
-  })
-})
+# Get unique year
+unique_years <- sort(unique(ungulates_poland$year), decreasing = T)
+unique_species  <- unique(ungulates_poland$species)
 
-ungulates[["2018"]][["M_SUSSCR"]]$species
-View(ungulates[["2018"]][["M_SUSSCR"]])
+# Create a separate df for each of the species
+ungulates_poland_spp <- list()
 
-names(ungulates[["2018"]][["M_SUSSCR"]])
-
-
-# Ungulates by yeas. This can be done before but I just realize after processing,
-ungulates_by_year <- list()
-
-wanted_cols <- c("occurrence", "species", "year", "speciesCode", "geometry")
-
-for ( yr in names(ungulates)){
-  species_list <- ungulates[[yr]]
-  
-  species_list_filtered <- lapply(species_list, function(spp){
-    spp %>%
-      select(any_of(wanted_cols) )
-    
-  })
-  
-  #Combine all species sf object into one table
-  full_year_table <- do.call(rbind, species_list_filtered)
-  
-  ungulates_by_year[[yr]] <- full_year_table
-  
+for(sp in unique_species){
+  sp_data <-  ungulates_poland[ungulates_poland$species == sp, ]
+  ungulates_poland_spp[[sp]] <- sp_data
 }
-
-unique(ungulates_by_year[["2018"]]$species)
-
-# Delete one year not valid
-ungulates_by_year[["0"]] <- NULL
-
-years <- as.integer(names(ungulates_by_year))
-
-# check whats is the max and min year in the dataset
-year_max <- max(years)
-year_min <- min(years)
-
-# Get unique years
-unique_years <- sort(unique(years), decreasing = T)
-length(unique_years)
-unique_species <- unique(ungulates_by_year[["2018"]]$speciesCode)
-
-# Create a sepatate dataframe for each of the species
-estonia_ungualates_spp <- list()
-for (sp in unique_species){
-  all_year_data <- lapply(ungulates_by_year, function(year_df){
-    year_df[year_df$speciesCode == sp, ]
-  })
-  
-  estonia_ungualates_spp[[sp]] <- do.call(rbind, all_year_data)
-}
-
-names(estonia_ungualates_spp)
 
 # We process the ungulates by species, but in Order to not lose the year information
 # We need to loop this by year for each of the species, so we dont lose the year info by species
 # otherwise we  wont know which grids are for wichi years
-results_by_year <- list()
-
+ungulates_poland_spp_year <- list()
 
 for (year in unique_years){
   cat("processing year:", year, "\n")
   # Create a copy of the grid for this year
-  eea_grid_year <- eea_grid_ee
+  eea_grid_year <- eea_grid_pl
   
   # Now we loop over the species
-  for (sp in names(estonia_ungualates_spp)){
+  for (sp in names(ungulates_poland_spp)){
     cat("processing species:", sp, "for the year:", year, "\n") 
     
-    species_data <-  estonia_ungualates_spp[[sp]] # extract the data by the species names
+    species_data <-  ungulates_poland_spp[[sp]] # extract the data by the species names
     species_data$year <- as.character(species_data$year)
     species_data_year <- species_data[species_data$year == year,] # Filter by year
     
@@ -197,7 +140,7 @@ for (year in unique_years){
     species_data_year <- st_make_valid(species_data_year)
     
     # Initialize a column in the grid for this specie and year
-    species_column  <-  sp
+    species_column  <-  species_code_map[sp]
     # Start the species column in the Grid
     if (!species_column %in% colnames(eea_grid_year)){
       eea_grid_year[[species_column]] <- 0
@@ -208,19 +151,19 @@ for (year in unique_years){
       # Spatial intersection
       intersects <- sf::st_intersects(eea_grid_year, species_data_year, sparse = F)
       eea_grid_year[[species_column]] <- ifelse(rowSums(intersects) > 0 , 1, eea_grid_year[[species_column]])
-      eea_grid_year$geometry <- st_sfc(eea_grid_year$geometry)
-      eea_grid_year <- st_as_sf(eea_grid_year)
+      # eea_grid_year$geometry <- st_sfc(eea_grid_year$geometry)
+      # eea_grid_year <- st_as_sf(eea_grid_year)
     }
     cat("Specie:", sp, "for year:", year,"processed\n")
   }
   
   # Save the grid for the current in the results list
-  results_by_year[[as.character(year)]] <- eea_grid_year
+  ungulates_poland_spp_year[[as.character(year)]] <- eea_grid_year
   cat("year:", year, "processing completed\n")
 }
 
 # Over all check for
-lapply(results_by_year, function(grid) {
+lapply(ungulates_poland_spp_year, function(grid) {
   grid %>%
     st_drop_geometry() %>%
     summarize(across(everything(), ~ sum(. > 0, na.rm = TRUE)))
@@ -228,33 +171,60 @@ lapply(results_by_year, function(grid) {
 
 
 # Check
-View(results_by_year)
-View(results_by_year[['2023']])
-
+View(ungulates_poland_spp_year)
+View(ungulates_poland_spp_year[['2020']])
 
 #  We process first one year
-eea_grid_ee_2016 <- results_by_year[['2016']]
+eea_grid_pl_2020 <- ungulates_poland_spp_year[['2020']]
 # 
-# $`2016`
-# CELLCODE EOFORIGIN NOFORIGIN ALCALC CAPCAP CERELA SUSSCR
-# 1     1122      1122      1122     70    120      5     44
+# $`2020`
+# CELLCODE EOFORIGIN NOFORIGIN    DAMDAM ALCALC RUPRUP CERELA SUSSCR CAPCAP CERNIP OVIAMM
+# 1     4047      4047      4047      4    102      1      0      0      0      0      4
 
-eea_grid_ee_1980 <- results_by_year[['1980']]
+eea_grid_pl_1987 <- ungulates_poland_spp_year[['1987']]
+View(eea_grid_pl_1987)
 
-
-
+# $`1987`
+# CELLCODE EOFORIGIN NOFORIGIN      DAMDAM ALCALC RUPRUP CERELA SUSSCR CAPCAP CERNIP OVIAMM
+# 1     4047      4047      4047      0      1      0      0      0      0      0      0
 
 # checks
-unique(eea_grid_ee_2016$ALCALC)
-unique(eea_grid_ee_1980$ALCALC)
+unique(eea_grid_pl_2020$ALCALC)
+unique(eea_grid_pl_1987$ALCALC)
 
-# Visualize to confirm
-ALCALC_2016 <- eea_grid_ee_2016[eea_grid_ee_2016$ALCALC == 1, ]
-plot(st_geometry(ALCALC_2016), col = "red")
+# Visualitation test:
+# importa libraries
+library(giscoR)
+library(ggplot2)
 
-# Compare vs 1980
-ALCALC_1980 <- eea_grid_ee_1980[eea_grid_ee_1980$ALCALC == 1, ]
-plot(st_geometry(ALCALC_1980), col = "yellow", add = TRUE)
+poland <- gisco_get_countries(res = "10", country = "PL", epsg = 3035)
+nuts_pl <- gisco_get_nuts(nuts_level = 2, country = "PL", epsg = 3035)
+
+ALCALC_2020 <- eea_grid_pl_2020[eea_grid_pl_2020$ALCALC == 1, ]
+ALCALC_1987 <- eea_grid_pl_1987[eea_grid_pl_1987$ALCALC == 1, ]
+
+ggplot() +
+  geom_sf(data = nuts_pl, fill = NA, color = "darkgray")+
+  geom_sf(data = ALCALC_2020, fill = "lightblue", color = NA)+
+  theme_minimal()
+  
+# Add year column
+ALCALC_1987$year <- "1987"
+ALCALC_2020$year <- "2020"
+
+# Combine into one object
+alcalc_compare <- rbind(ALCALC_1987, ALCALC_2020)
+
+ggplot() +
+  geom_sf(data = gisco_get_countries(country = "PL", epsg = 3035), fill = "gray95", color = "black") +
+  geom_sf(data = alcalc_compare, aes(fill = year), color = NA, alpha = 0.8) +
+  facet_wrap(~year) +
+  scale_fill_manual(values = c("1987" = "goldenrod", "2020" = "red")) +
+  labs(title = "Alces alces distribution in Poland",
+       subtitle = "Comparison: Earliest (1987) vs Most Recent (2020)") +
+  theme_minimal()
+
+
 
 # Hybrid Approach
 # 
@@ -271,7 +241,7 @@ plot(st_geometry(ALCALC_1980), col = "yellow", add = TRUE)
 
 # Define the output directory for saving files
 getwd()
-output_directory <- "output\\data\\estonia\\ungulates"
+output_directory <- "output\\data\\poland\\ungulates"
 
 # Ensure the output directory exists
 if (!dir.exists(output_directory)) {
@@ -279,7 +249,7 @@ if (!dir.exists(output_directory)) {
 }
 
 # We create the species list by year as references
-species_list <- lapply(results_by_year, function(grid) {
+species_list <- lapply(ungulates_poland_spp_year, function(grid) {
   grid %>%
     st_drop_geometry() %>%
     summarize(across(everything(), ~ sum(. > 0, na.rm = TRUE))) %>%
@@ -288,18 +258,16 @@ species_list <- lapply(results_by_year, function(grid) {
 })
 
 print(species_list)
-names(results_by_year[[1]])
+names(ungulates_poland_spp_year[[1]])
 
 # Flatten the species list to get unique speices acroos   
-# unique_species <- unique(unlist(species_list))[4:13]
-unique_species <- unique(names(results_by_year[[1]]))[5:8]
+unique_species <- unique(unlist(species_list))[4:11]
 
-backup <- results_by_year
 
 # Loop over each unique year and save the grid
-for (year in names(results_by_year)) {
+for (year in names(ungulates_poland_spp_year)) {
   
-  data_year <- results_by_year[[year]] %>% 
+  data_year <- ungulates_poland_spp_year[[year]] %>% 
     mutate(YEAR = year) # Add the year column 
   
   # Define year folder 
@@ -328,7 +296,7 @@ for (year in names(results_by_year)) {
     species_data <- data_year %>% 
       select(CELLCODE, EOFORIGIN, NOFORIGIN, YEAR, all_of(species_code), geometry) %>%
       rename(!!new_column_name := all_of(species_code)) %>%
-      mutate(eventID = "ROAEE1485") # Set the right eventID
+      mutate(eventID = "OKAPL10336") # Set the right eventID
     
     # Define the output file path for the species within the year folder
     output_file <- file.path(year_folder, paste0("M_", toupper(species_code), ".shp"))
@@ -337,3 +305,32 @@ for (year in names(results_by_year)) {
     terra::writeVector(vect(species_data), output_file, overwrite = TRUE)
   }
 }
+
+
+
+##### Count species by cells
+# Extract species columns from any year (they are the same)
+species_codes <- names(ungulates_poland_spp_year[[1]])
+species_codes <- species_codes[!(species_codes %in% c("CELLCODE", "EOFORIGIN", "NOFORIGIN", "geometry"))]
+
+# Count presence by year
+cell_counts_by_year <- lapply(ungulates_poland_spp_year, function(grid) {
+  grid %>%
+    st_drop_geometry() %>%
+    summarize(across(all_of(species_codes), ~ sum(. == 1, na.rm = TRUE)))
+})
+
+# Combine into one data.frame
+cell_counts_df <- bind_rows(cell_counts_by_year, .id = "year")
+
+# Sum across all years for each species (repeated cell = repeated count)
+total_cell_counts <- cell_counts_df %>%
+  select(all_of(species_codes)) %>%
+  summarise(across(everything(), sum))
+
+print(total_cell_counts)
+
+
+
+
+
