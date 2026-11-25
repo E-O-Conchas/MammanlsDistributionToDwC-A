@@ -1,0 +1,9 @@
+{
+  "snapshot": "database/snapshots/20261124T1545482585117Z",
+  "snapshot_sha256": "337e5da8b589d11b73285268a1c7bc75beaf2c6dafe22aca70c14ba1a6f51e77",
+  "tables": [
+    "mammals_dwc_event",
+    "shapefiles_database"
+  ],
+  "original_column_names_preserved": true
+}

@@ -1,0 +1,5 @@
+dataset_key: ireland
+input_type: map_digitization
+input_directory: sources/ireland/input
+prepared_directory: sources/ireland/prepared
+processing_status: not_automated

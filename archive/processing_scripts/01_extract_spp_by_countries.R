@@ -16,7 +16,7 @@ library(stringr)
 
 # Set the working directory
 setwd("I:/biocon/Emmanuel_Oceguera/projects/Mammals_species_distribution_DarwingCore")
-dir_europe <- "I:/biocon/Emmanuel_Oceguera/projects/Mammals_species_distribution_DarwingCore/data/occurrances_data/raw_data_by_country"
+dir_europe <- "I:/biocon/Emmanuel_Oceguera/projects/Mammals_species_distribution_DarwingCore/data/occurrances_data/by_country"
 
 # List of species IDs
 species_list <- c("alcalc", "capibe", "cappyr", "cerela", "ruprup", "susscr", "capcap", "bisbon", "capaeg",
@@ -97,7 +97,12 @@ sp_occ_layer_3035 <- sp_occ_layer %>%
 # Loop through each country and species
 for (country_name in unique(country_layer_3035$CNTR_ID)) {
   for (species_code in species_list_columns) {
-    process_shapefile(country_name, species_code, country_layer_3035, sp_occ_layer_3035, ea_grid, dir_europe)
+    process_shapefile(country_name, species_code, 
+                      country_layer_3035, 
+                      sp_occ_layer_3035, 
+                      ea_grid, 
+                      dir_europe
+                      )
   }
 }
 

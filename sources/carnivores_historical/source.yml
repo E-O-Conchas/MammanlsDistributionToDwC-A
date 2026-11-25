@@ -1,0 +1,5 @@
+dataset_key: carnivores_historical
+input_type: occupied_grid_cells
+input_directory: sources/carnivores_historical/input
+prepared_directory: sources/carnivores_historical/prepared
+processing_status: not_automated

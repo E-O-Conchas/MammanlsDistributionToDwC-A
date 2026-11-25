@@ -1,0 +1,6 @@
+dataset_key: france_ofb
+input_type: polygons
+source_rules: scripts/sources/france_ofb.R
+preparation_entry: scripts/02_prepare_source.R
+prepared_file: sources/france_ofb/prepared/records.gpkg
+# Descriptive index only; the executable source rules are in the R profile.

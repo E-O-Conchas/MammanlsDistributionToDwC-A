@@ -1,0 +1,7 @@
+dataset_key: germany_thuringia
+input_type: map_digitization
+input_directory: sources/germany_thuringia/input
+prepared_directory: sources/germany_thuringia/prepared
+processing_status: not_automated
+legacy_source_ids: ["GÖRDETH0507"]
+reference_script: archive/processing_scripts/04_add_data_in_grid.R

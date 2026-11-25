@@ -1,0 +1,5 @@
+dataset_key: italy
+input_type: maps_and_literature
+input_directory: sources/italy/input
+prepared_directory: sources/italy/prepared
+processing_status: not_automated

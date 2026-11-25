@@ -1,0 +1,5 @@
+dataset_key: emma
+input_type: spatial_compilation
+input_directory: sources/emma/input
+prepared_directory: sources/emma/prepared
+processing_status: not_automated

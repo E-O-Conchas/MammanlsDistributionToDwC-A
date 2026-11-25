@@ -1,0 +1,6 @@
+db:
+  name: "YOUR_DATABASE_NAME"
+  host: "YOUR_DATABASE_HOST"
+  port: 5432
+  user: "YOUR_USERNAME"
+  password: "SET_LOCALLY"

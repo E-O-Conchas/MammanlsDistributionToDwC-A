@@ -1,0 +1,6 @@
+dataset_key: initial_compilation
+input_type: gridded_compilation
+input_directory: sources/initial_compilation/input
+prepared_directory: sources/initial_compilation/prepared
+processing_status: not_automated
+reference_script: archive/processing_scripts/01_extract_spp_by_countries.R

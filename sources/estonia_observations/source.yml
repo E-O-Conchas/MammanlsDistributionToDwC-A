@@ -1,0 +1,8 @@
+dataset_key: estonia_observations
+input_type: points
+source_rules: scripts/sources/estonia_observations.R
+preparation_entry: scripts/02_prepare_source.R
+prepared_file: sources/estonia_observations/prepared/records.gpkg
+raw_input_status: missing
+available_mode: reuse_existing_grids
+# Descriptive index only; the executable source rules are in the R profile.

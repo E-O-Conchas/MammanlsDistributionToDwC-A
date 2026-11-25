@@ -1,0 +1,7 @@
+dataset_key: carnivores_lcie_2017_2023
+input_type: grids
+source_rules: scripts/sources/carnivores_lcie_2017_2023.R
+preparation_entry: scripts/02_prepare_source.R
+prepared_file: sources/carnivores_lcie_2017_2023/prepared/records.gpkg
+enabled_layer: brown_bear
+# Descriptive index only; the executable source rules are in the R profile.
